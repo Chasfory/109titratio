@@ -1,0 +1,105 @@
+#!/usr/bin/python3 -O
+
+#faire une estimation des valeurs de la dérivée seconde tous les 0,1 ml autour du point ci-dessus le plus proche du point d'équivalence, en utilisant une interpolation linéaire
+#faire donner le point d'équivalence propre, estimé à partir de la dérivée seconde
+#faire -h
+#terminer gestion d'erreur
+
+import sys
+import csv
+
+def secondDeriveEstimateFunct(derive, equivalence, variable, data, derivebis):
+    print("\nSecond derivative estimated:")
+    var_min = data[variable - 1][0]
+    var_max = data[variable + 1][0]
+    eq_min = derivebis[variable - 3]
+    eq_max = derivebis[variable - 1]
+    div_var_min = data[variable][0] - var_min
+    div_var_max = var_max - data[variable][0]
+    div_eq_min = derivebis[variable - 2] - eq_min
+    div_eq_max = eq_max - derivebis[variable - 2]
+    k1 = div_eq_min / (div_var_min * 10)
+    k2 = div_eq_max / (div_var_max * 10)
+    i = var_min
+    point = var_min
+    i_bis = i
+
+    while i < equivalence:
+        if abs(point) > abs(eq_min):
+            i_bis = i
+            point = eq_min
+        print("%.1f ml -> %.2f" % (i, eq_min))
+        eq_min += k1
+        i += 0.1
+    eq_min = derivebis[variable - 2] + k2
+    while i < var_max:
+        if abs(point) > abs(eq_min):
+            i_bis = i
+            point = eq_min
+        print("%.1f ml -> %.2f" % (i, eq_min))
+        eq_min += k2
+        i += 0.1
+    print("\nEquivalence point at %.1f ml" % (i_bis))
+
+def secondDeriveFunct(derive, equivalence, variable, data):
+    print("Second derivative:")
+    derivebis = []
+    j = 1
+
+    for i in range(2, len(data) - 2):
+        h1 = data[i + 1][0] - data[i][0]
+        forward = (derive[j + 1] - derive[j]) / h1
+        h2 = data[i][0] - data[i - 1][0]
+        backward = (derive[j] - derive[j - 1]) / h2
+        derivebis.append(((forward * h2) + (backward * h1)) / (h1 + h2))
+        print("%.1f ml -> %.2f" % (data[i][0], derivebis[i - 2]))
+        j = j + 1
+    secondDeriveEstimateFunct(derive, equivalence, variable, data, derivebis)
+
+def firstDeriveFunct(data, derive):
+    equivalence = 0
+    variable = 0
+
+    for i in range(1, len(data) - 1):
+        h1 = data[i + 1][0] - data[i][0]
+        forward = (data[i + 1][1] - data[i][1]) / h1
+        h2 = data[i][0] - data[i - 1][0]
+        backward = (data[i][1] - data[i - 1][1]) / h2
+        derive.append(((forward * h2) + (backward * h1)) / (h1 + h2))
+        print("%.1f ml -> %.2f" % (data[i][0], derive[i - 1]))
+        if derive[i - 1] > equivalence:
+            equivalence = data[i][0]
+            variable = i
+    print("\nEquivalence point at %.1f ml\n" % equivalence)
+    secondDeriveFunct(derive, equivalence, variable, data)
+
+def derivativeValues(data):
+    print("Derivative:")
+    derive = []
+    firstDeriveFunct(data, derive)
+
+
+def errorHandling(data):
+    if not data:
+        exit(84)
+
+def openFile(file):
+    with open(file) as calc:
+        data = list(csv.reader(calc, delimiter=";"))
+    for i in range(len(data)):
+        data[i][0] = float(data[i][0])
+        data[i][1] = float(data[i][1])
+    return data
+
+def main(argv):
+    data = openFile(argv[0])
+    errorHandling(data)
+    derivativeValues(data)
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv[1:])
+    except ValueError:
+        exit(84)
+    except ZeroDivisionError:
+        exit(84)
